@@ -276,7 +276,37 @@ for i in range(1,numOfRounds):
         delays[tuple(idx)] = delays[tuple(idx)] - 1
 
 
+# mean reward per round vs delay
+labels = ["PURE UCB without delay", "UCB with reward queue delay = 5", "UCB with reward queue delay = 10", "UCB with reward queue delay = 20", "UCB with reward queue delay = 50", "PURE TS without delay", "TS with reward queue d = 5", "TS with reward queue d = 10", "Optimal", "Round Robin without delay", "Delayed Round Robin, d = 5", "PURE Delayed UCB delay = 5"]
+legends = [labels[0], labels[5], labels[8], labels[9], labels[1], labels[6], labels[10], labels[2], labels[7], labels[11], labels[3], labels[4]]
+xax = np.array([0, 5, 10, 20, 50])
+ax = plt.subplot()
+plt.errorbar(xax[0], np.mean(gainedRewardArray[0,:]), np.std(gainedRewardArray[0,:]), linestyle='None', marker='s', capsize=3)
+plt.errorbar(xax[0], np.mean(gainedRewardArray[5,:]), np.std(gainedRewardArray[5,:]), linestyle='None', marker='+', capsize=3)
+plt.errorbar(xax[0], np.mean(gainedRewardArray[8,:]), np.std(gainedRewardArray[8,:]), linestyle='None', marker='*', capsize=3)
+plt.errorbar(xax[0], np.mean(gainedRewardArray[9,:]), np.std(gainedRewardArray[9,:]), linestyle='None', marker='^', capsize=3)
+plt.errorbar(xax[1], np.mean(gainedRewardArray[1,:]), np.std(gainedRewardArray[1,:]), linestyle='None', marker='s', capsize=3)
+plt.errorbar(xax[1], np.mean(gainedRewardArray[6,:]), np.std(gainedRewardArray[6,:]), linestyle='None', marker='+', capsize=3)
+plt.errorbar(xax[1], np.mean(gainedRewardArray[10,:]), np.std(gainedRewardArray[10,:]), linestyle='None', marker='*', capsize=3)
+plt.errorbar(xax[1], np.mean(gainedRewardArray[11,:]), np.std(gainedRewardArray[11,:]), linestyle='None', marker='^', capsize=3)
+plt.errorbar(xax[2], np.mean(gainedRewardArray[2,:]), np.std(gainedRewardArray[2,:]), linestyle='None', marker='*', capsize=3)
+plt.errorbar(xax[2], np.mean(gainedRewardArray[7,:]), np.std(gainedRewardArray[7,:]), linestyle='None', marker='+', capsize=3)
+plt.errorbar(xax[3], np.mean(gainedRewardArray[3,:]), np.std(gainedRewardArray[3,:]), linestyle='None', marker='*', capsize=3)
+plt.errorbar(xax[4], np.mean(gainedRewardArray[4,:]), np.std(gainedRewardArray[4,:]), linestyle='None', marker='*', capsize=3)
 
+plt.legend(legends, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.axhline(y = np.mean(gainedRewardArray[Algos.OPTIMAL.value,:]), color = 'r', linestyle = '--')
+plt.grid()
+plt.setp(ax.get_xticklabels(), rotation=30, ha='right')
+plt.xlabel("Delay")
+plt.ylabel("Mean reward per round with std")
+plt.title("Mean reward per round with std vs delay [N = 100, K = 3]")
+plt.tight_layout()
+plt.show()
+
+
+"""
+# mean reward per round vs cases
 labels = ["PURE UCB without delay", "UCB with reward queue delay = 5", "UCB with reward queue delay = 10", "UCB with reward queue delay = 20", "UCB with reward queue delay = 50", "PURE TS without delay", "TS with reward queue d = 5", "TS with reward queue d = 10", "Optimal", "Round Robin without delay", "Delayed Round Robin, d = 5", "PURE Delayed UCB delay = 5"]
 ax = plt.subplot()
 plt.errorbar(labels, np.mean(gainedRewardArray, axis=1), np.std(gainedRewardArray, axis=1), linestyle='None', marker='^', capsize=3)
@@ -288,8 +318,12 @@ plt.ylabel("Mean reward per round with std")
 plt.title("Mean reward per round with std [N = 100, K = 3]")
 plt.tight_layout()
 plt.show()
+"""
 
-""" plt.plot(avgRewardArray[Algos.UCB.value,:], label="PURE UCB without delay")
+
+""" 
+# straight line graph mean reward vs rounds
+plt.plot(avgRewardArray[Algos.UCB.value,:], label="PURE UCB without delay")
 plt.plot(avgRewardArray[Algos.UCB_DELAYED_5.value,:], label="UCB with reward queue delay = 5")
 plt.plot(avgRewardArray[Algos.UCB_DELAYED_10.value,:], label="UCB with reward queue delay = 10")
 plt.plot(avgRewardArray[Algos.UCB_DELAYED_20.value,:], label="UCB with reward queue delay = 20")
