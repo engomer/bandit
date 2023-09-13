@@ -57,6 +57,44 @@ def ts_delayed(gainedRewardArray, alphad, betad, numSelections, avgReward, numOf
 
     return gainedRewardArray, alphad, betad, numSelections, avgReward, gainedReward, fifo, delays
 
+def ts_delayed_pure(gainedRewardArray, alphad, betad, numSelections, avgReward, numOfArms, armToChoose, roundNum, gainedReward, rewardProbabilities, fifo, fifoSize, delays, delayTime):
+    if((np.size(np.argwhere(numSelections < delayTime))) > 0):
+        #selections  = np.random.choice(numOfArms, armToChoose, replace=False)
+        selections  = (np.arange(armToChoose) + roundNum % numOfArms) % numOfArms -1
+        numSelections[selections] = numSelections[selections] + 1
+        for j in selections:    
+            loc = np.argwhere(delays[j] == -1)
+            loc = loc[0][0]
+            delays[j, loc] = delayTime
+
+    else:
+        sampled_means = np.random.beta(alphad, betad)
+        selections = np.argsort(sampled_means)[-armToChoose:]
+        for j in selections:
+            loc = np.argwhere(delays[j] == -1)
+            loc = loc[0][0]
+            delays[j, loc] = delayTime
+            
+            
+    if ((np.size(np.argwhere(delays == 0))) > 0):
+        for m in np.argwhere(delays==0):
+            
+            tmp_queue = deque(fifo[m[0],:].ravel(), maxlen=fifoSize)
+            reward = sample_arm(rewardProbabilities, m[0])
+
+            alphad[j] = alphad[j] + reward
+            betad[j] = betad[j] + 1 - reward
+            tmp_queue.appendleft(reward)
+            fifo[m[0],:] = np.array(tmp_queue)
+            delays[tuple(m)] = -1
+            gainedReward = gainedReward + reward
+            gainedRewardArray[roundNum] = gainedRewardArray[roundNum] + reward
+            avgReward[j] = avgReward[j] + (reward)/numSelections[j]
+            
+
+    return gainedRewardArray, alphad, betad, numSelections, avgReward, gainedReward, fifo, delays
+
+
 
 def ucb(gainedRewardArray, numSelections, avgReward, numOfArms, armToChoose, roundNum, gainedReward, rewardProbilities):
 
@@ -191,14 +229,21 @@ class Algos(Enum):
     UCB_DELAYED_5 = 1
     UCB_DELAYED_10 = 2
     UCB_DELAYED_20 = 3
-    UCB_DELAYED_50 = 4
-    TS = 5
-    TS_DELAYED_5 = 6
-    TS_DELAYED_10 = 7
-    OPTIMAL = 8
-    ROUND_ROBIN = 9
-    ROUND_ROBIN_DELAYED_5 = 10
-    UCB_DELAYED_PURE_5 = 11
+    UCB_DELAYED_PURE_5 = 4
+    UCB_DELAYED_PURE_10 = 5
+    UCB_DELAYED_PURE_20 = 6
+    TS = 7
+    TS_DELAYED_5 = 8
+    TS_DELAYED_10 = 9
+    TS_DELAYED_20 = 10
+    TS_DELAYED_PURE_5 = 11
+    TS_DELAYED_PURE_10 = 12
+    TS_DELAYED_PURE_20 = 13
+    OPTIMAL = 14
+    ROUND_ROBIN = 15
+    ROUND_ROBIN_DELAYED_5 = 16
+    ROUND_ROBIN_DELAYED_10 = 17
+    ROUND_ROBIN_DELAYED_20 = 18
 
 
 MAX_DELAY = 10
@@ -233,13 +278,39 @@ betad = np.ones(numOfArms)
 alphad2 = np.ones(numOfArms)
 betad2 = np.ones(numOfArms)
 
+alphad3 = np.ones(numOfArms)
+betad3= np.ones(numOfArms)
+
+alphad4 = np.ones(numOfArms)
+betad4= np.ones(numOfArms)
+
+alphad5 = np.ones(numOfArms)
+betad5 = np.ones(numOfArms)
+
+alphad6 = np.ones(numOfArms)
+betad6 = np.ones(numOfArms)
+
+
 for i in range(1,numOfRounds):
+
+    # Optimal
+    gainedRewardArray[Algos.OPTIMAL.value,:], gainedReward[Algos.OPTIMAL.value], avgReward[Algos.OPTIMAL.value,:], numSelections[Algos.OPTIMAL.value,:] = optimal(gainedRewardArray[Algos.OPTIMAL.value,:], armToChoose, rewardProbabilities, gainedReward[Algos.OPTIMAL.value], avgReward[Algos.OPTIMAL.value,:], numSelections[Algos.OPTIMAL.value,:], i)
+    avgRewardArray[Algos.OPTIMAL.value,i] = gainedReward[Algos.OPTIMAL.value] / i
+
     # UCB
     gainedRewardArray[Algos.UCB.value,:], numSelections[Algos.UCB.value,:],  avgReward[Algos.UCB.value,:], gainedReward[Algos.UCB.value]= ucb(gainedRewardArray[Algos.UCB.value,:], numSelections[Algos.UCB.value, :], avgReward[Algos.UCB.value, :], numOfArms, armToChoose, i, gainedReward[Algos.UCB.value], rewardProbabilities)
     avgRewardArray[Algos.UCB.value,i] = gainedReward[Algos.UCB.value] / i
+    
     # UCB Delayed PURE 5
     gainedRewardArray[Algos.UCB_DELAYED_PURE_5.value,:], numSelections[Algos.UCB_DELAYED_PURE_5.value,:],  avgReward[Algos.UCB_DELAYED_PURE_5.value,:], gainedReward[Algos.UCB_DELAYED_PURE_5.value], delays[Algos.UCB_DELAYED_PURE_5.value,:], fifo[Algos.UCB_DELAYED_PURE_5.value, :, :] = ucb_delayed_pure(gainedRewardArray[Algos.UCB_DELAYED_PURE_5.value,:], numSelections[Algos.UCB_DELAYED_PURE_5.value, :], avgReward[Algos.UCB_DELAYED_PURE_5.value, :], numOfArms, armToChoose, i, gainedReward[Algos.UCB_DELAYED_PURE_5.value], rewardProbabilities, fifo[Algos.UCB_DELAYED_PURE_5.value,:,:], fifoSize, delays[Algos.UCB_DELAYED_PURE_5.value,:], 5)
     avgRewardArray[Algos.UCB_DELAYED_PURE_5.value,i] = gainedReward[Algos.UCB_DELAYED_PURE_5.value] / i
+    # UCB Delayed PURE 10
+    gainedRewardArray[Algos.UCB_DELAYED_PURE_10.value,:], numSelections[Algos.UCB_DELAYED_PURE_10.value,:],  avgReward[Algos.UCB_DELAYED_PURE_10.value,:], gainedReward[Algos.UCB_DELAYED_PURE_10.value], delays[Algos.UCB_DELAYED_PURE_10.value,:], fifo[Algos.UCB_DELAYED_PURE_10.value, :, :] = ucb_delayed_pure(gainedRewardArray[Algos.UCB_DELAYED_PURE_10.value,:], numSelections[Algos.UCB_DELAYED_PURE_10.value, :], avgReward[Algos.UCB_DELAYED_PURE_10.value, :], numOfArms, armToChoose, i, gainedReward[Algos.UCB_DELAYED_PURE_10.value], rewardProbabilities, fifo[Algos.UCB_DELAYED_PURE_10.value,:,:], fifoSize, delays[Algos.UCB_DELAYED_PURE_10.value,:], 10)
+    avgRewardArray[Algos.UCB_DELAYED_PURE_10.value,i] = gainedReward[Algos.UCB_DELAYED_PURE_10.value] / i
+    # UCB Delayed PURE 20
+    gainedRewardArray[Algos.UCB_DELAYED_PURE_20.value,:], numSelections[Algos.UCB_DELAYED_PURE_20.value,:],  avgReward[Algos.UCB_DELAYED_PURE_20.value,:], gainedReward[Algos.UCB_DELAYED_PURE_20.value], delays[Algos.UCB_DELAYED_PURE_20.value,:], fifo[Algos.UCB_DELAYED_PURE_20.value, :, :] = ucb_delayed_pure(gainedRewardArray[Algos.UCB_DELAYED_PURE_20.value,:], numSelections[Algos.UCB_DELAYED_PURE_20.value, :], avgReward[Algos.UCB_DELAYED_PURE_20.value, :], numOfArms, armToChoose, i, gainedReward[Algos.UCB_DELAYED_PURE_20.value], rewardProbabilities, fifo[Algos.UCB_DELAYED_PURE_20.value,:,:], fifoSize, delays[Algos.UCB_DELAYED_PURE_20.value,:], 5)
+    avgRewardArray[Algos.UCB_DELAYED_PURE_20.value,i] = gainedReward[Algos.UCB_DELAYED_PURE_20.value] / i
+    
     # UCB Delayed 5
     gainedRewardArray[Algos.UCB_DELAYED_5.value,:], numSelections[Algos.UCB_DELAYED_5.value,:],  avgReward[Algos.UCB_DELAYED_5.value,:], gainedReward[Algos.UCB_DELAYED_5.value], delays[Algos.UCB_DELAYED_5.value,:], fifo[Algos.UCB_DELAYED_5.value, :, :] = ucb_delayed(gainedRewardArray[Algos.UCB_DELAYED_5.value,:], numSelections[Algos.UCB_DELAYED_5.value, :], avgReward[Algos.UCB_DELAYED_5.value, :], numOfArms, armToChoose, i, gainedReward[Algos.UCB_DELAYED_5.value], rewardProbabilities, fifo[Algos.UCB_DELAYED_5.value,:,:], fifoSize, delays[Algos.UCB_DELAYED_5.value,:], 5)
     avgRewardArray[Algos.UCB_DELAYED_5.value,i] = gainedReward[Algos.UCB_DELAYED_5.value] / i
@@ -249,33 +320,115 @@ for i in range(1,numOfRounds):
     # UCB Delayed 20
     gainedRewardArray[Algos.UCB_DELAYED_20.value,:], numSelections[Algos.UCB_DELAYED_20.value,:],  avgReward[Algos.UCB_DELAYED_20.value,:], gainedReward[Algos.UCB_DELAYED_20.value], delays[Algos.UCB_DELAYED_20.value,:], fifo[Algos.UCB_DELAYED_20.value, :, :] = ucb_delayed(gainedRewardArray[Algos.UCB_DELAYED_20.value,:], numSelections[Algos.UCB_DELAYED_20.value, :], avgReward[Algos.UCB_DELAYED_20.value, :], numOfArms, armToChoose, i, gainedReward[Algos.UCB_DELAYED_20.value], rewardProbabilities, fifo[Algos.UCB_DELAYED_20.value,:,:], fifoSize, delays[Algos.UCB_DELAYED_20.value,:], 20)
     avgRewardArray[Algos.UCB_DELAYED_20.value,i] = gainedReward[Algos.UCB_DELAYED_20.value] / i
-    # UCB Delayed 50
-    gainedRewardArray[Algos.UCB_DELAYED_50.value,:], numSelections[Algos.UCB_DELAYED_50.value,:],  avgReward[Algos.UCB_DELAYED_50.value,:], gainedReward[Algos.UCB_DELAYED_50.value], delays[Algos.UCB_DELAYED_50.value,:], fifo[Algos.UCB_DELAYED_50.value, :, :] = ucb_delayed(gainedRewardArray[Algos.UCB_DELAYED_50.value,:], numSelections[Algos.UCB_DELAYED_50.value, :], avgReward[Algos.UCB_DELAYED_50.value, :], numOfArms, armToChoose, i, gainedReward[Algos.UCB_DELAYED_50.value], rewardProbabilities, fifo[Algos.UCB_DELAYED_50.value,:,:], fifoSize, delays[Algos.UCB_DELAYED_50.value,:], 50)
-    avgRewardArray[Algos.UCB_DELAYED_50.value,i] = gainedReward[Algos.UCB_DELAYED_50.value] / i
+    
     # TS
     gainedRewardArray[Algos.TS.value,:], alpha, beta, avgReward[Algos.TS.value,:], numSelections[Algos.TS.value,:], gainedReward[Algos.TS.value] = ts(gainedRewardArray[Algos.TS.value,:], alpha, beta, armToChoose, rewardProbabilities, avgReward[Algos.TS.value,:], numSelections[Algos.TS.value,:], gainedReward[Algos.TS.value], i)
     avgRewardArray[Algos.TS.value,i] = gainedReward[Algos.TS.value] / i
+
     # TS Delayed 5
     gainedRewardArray[Algos.TS_DELAYED_5.value,:], alphad, betad, numSelections[Algos.TS_DELAYED_5.value,:], avgReward[Algos.TS_DELAYED_5.value,:], gainedReward[Algos.TS_DELAYED_5.value], fifo[Algos.TS_DELAYED_5.value, :, :], delays[Algos.TS_DELAYED_5.value,:] = ts_delayed(gainedRewardArray[Algos.TS_DELAYED_5.value,:], alphad, betad, numSelections[Algos.TS_DELAYED_5.value,:], avgReward[Algos.TS_DELAYED_5.value,:], numOfArms, armToChoose, i, gainedReward[Algos.TS_DELAYED_5.value], rewardProbabilities, fifo[Algos.TS_DELAYED_5.value,:,:], fifoSize, delays[Algos.TS_DELAYED_5.value,:], 5)
     avgRewardArray[Algos.TS_DELAYED_5.value,i] = gainedReward[Algos.TS_DELAYED_5.value] / i
     # TS Delayed 10
     gainedRewardArray[Algos.TS_DELAYED_10.value,:], alphad2, betad2, numSelections[Algos.TS_DELAYED_10.value,:], avgReward[Algos.TS_DELAYED_10.value,:], gainedReward[Algos.TS_DELAYED_10.value], fifo[Algos.TS_DELAYED_10.value, :, :], delays[Algos.TS_DELAYED_10.value,:] = ts_delayed(gainedRewardArray[Algos.TS_DELAYED_10.value,:], alphad2, betad2, numSelections[Algos.TS_DELAYED_10.value,:], avgReward[Algos.TS_DELAYED_10.value,:], numOfArms, armToChoose, i, gainedReward[Algos.TS_DELAYED_10.value], rewardProbabilities, fifo[Algos.TS_DELAYED_10.value,:,:], fifoSize, delays[Algos.TS_DELAYED_10.value,:], 10)
     avgRewardArray[Algos.TS_DELAYED_10.value,i] = gainedReward[Algos.TS_DELAYED_10.value] / i
-    # Optimal
-    gainedRewardArray[Algos.OPTIMAL.value,:], gainedReward[Algos.OPTIMAL.value], avgReward[Algos.OPTIMAL.value,:], numSelections[Algos.OPTIMAL.value,:] = optimal(gainedRewardArray[Algos.OPTIMAL.value,:], armToChoose, rewardProbabilities, gainedReward[Algos.OPTIMAL.value], avgReward[Algos.OPTIMAL.value,:], numSelections[Algos.OPTIMAL.value,:], i)
-    avgRewardArray[Algos.OPTIMAL.value,i] = gainedReward[Algos.OPTIMAL.value] / i
+    # TS Delayed 20
+    gainedRewardArray[Algos.TS_DELAYED_20.value,:], alphad3, betad3, numSelections[Algos.TS_DELAYED_20.value,:], avgReward[Algos.TS_DELAYED_20.value,:], gainedReward[Algos.TS_DELAYED_20.value], fifo[Algos.TS_DELAYED_20.value, :, :], delays[Algos.TS_DELAYED_20.value,:] = ts_delayed(gainedRewardArray[Algos.TS_DELAYED_20.value,:], alphad3, betad3, numSelections[Algos.TS_DELAYED_20.value,:], avgReward[Algos.TS_DELAYED_20.value,:], numOfArms, armToChoose, i, gainedReward[Algos.TS_DELAYED_20.value], rewardProbabilities, fifo[Algos.TS_DELAYED_20.value,:,:], fifoSize, delays[Algos.TS_DELAYED_20.value,:], 20)
+    avgRewardArray[Algos.TS_DELAYED_20.value,i] = gainedReward[Algos.TS_DELAYED_10.value] / i
+    
+    # TS Delayed Pure  5
+    gainedRewardArray[Algos.TS_DELAYED_PURE_5.value,:], alphad4, betad4, numSelections[Algos.TS_DELAYED_PURE_5.value,:], avgReward[Algos.TS_DELAYED_PURE_5.value,:], gainedReward[Algos.TS_DELAYED_PURE_5.value], fifo[Algos.TS_DELAYED_PURE_5.value, :, :], delays[Algos.TS_DELAYED_PURE_5.value,:] = ts_delayed_pure(gainedRewardArray[Algos.TS_DELAYED_PURE_5.value,:], alphad4, betad4, numSelections[Algos.TS_DELAYED_PURE_5.value,:], avgReward[Algos.TS_DELAYED_PURE_5.value,:], numOfArms, armToChoose, i, gainedReward[Algos.TS_DELAYED_PURE_5.value], rewardProbabilities, fifo[Algos.TS_DELAYED_PURE_5.value,:,:], fifoSize, delays[Algos.TS_DELAYED_PURE_5.value,:], 5)
+    avgRewardArray[Algos.TS_DELAYED_PURE_5.value,i] = gainedReward[Algos.TS_DELAYED_PURE_5.value] / i
+    # TS Delayed Pure  10
+    gainedRewardArray[Algos.TS_DELAYED_PURE_10.value,:], alphad5, betad5, numSelections[Algos.TS_DELAYED_PURE_10.value,:], avgReward[Algos.TS_DELAYED_PURE_10.value,:], gainedReward[Algos.TS_DELAYED_PURE_10.value], fifo[Algos.TS_DELAYED_PURE_10.value, :, :], delays[Algos.TS_DELAYED_PURE_10.value,:] = ts_delayed_pure(gainedRewardArray[Algos.TS_DELAYED_PURE_10.value,:], alphad5, betad5, numSelections[Algos.TS_DELAYED_PURE_10.value,:], avgReward[Algos.TS_DELAYED_PURE_10.value,:], numOfArms, armToChoose, i, gainedReward[Algos.TS_DELAYED_PURE_10.value], rewardProbabilities, fifo[Algos.TS_DELAYED_PURE_10.value,:,:], fifoSize, delays[Algos.TS_DELAYED_PURE_10.value,:], 10)
+    avgRewardArray[Algos.TS_DELAYED_PURE_10.value,i] = gainedReward[Algos.TS_DELAYED_PURE_10.value] / i
+    # TS Delayed Pure  20
+    gainedRewardArray[Algos.TS_DELAYED_PURE_20.value,:], alphad6, betad6, numSelections[Algos.TS_DELAYED_PURE_20.value,:], avgReward[Algos.TS_DELAYED_PURE_20.value,:], gainedReward[Algos.TS_DELAYED_PURE_20.value], fifo[Algos.TS_DELAYED_PURE_20.value, :, :], delays[Algos.TS_DELAYED_PURE_20.value,:] = ts_delayed_pure(gainedRewardArray[Algos.TS_DELAYED_PURE_20.value,:], alphad6, betad6, numSelections[Algos.TS_DELAYED_PURE_20.value,:], avgReward[Algos.TS_DELAYED_PURE_20.value,:], numOfArms, armToChoose, i, gainedReward[Algos.TS_DELAYED_PURE_20.value], rewardProbabilities, fifo[Algos.TS_DELAYED_PURE_20.value,:,:], fifoSize, delays[Algos.TS_DELAYED_PURE_20.value,:], 20)
+    avgRewardArray[Algos.TS_DELAYED_PURE_20.value,i] = gainedReward[Algos.TS_DELAYED_PURE_20.value] / i
+    
     # Round Robin
     gainedRewardArray[Algos.ROUND_ROBIN.value,:], gainedReward[Algos.ROUND_ROBIN.value], avgReward[Algos.ROUND_ROBIN.value,:], numSelections[Algos.ROUND_ROBIN.value,:] = roundRobin(gainedRewardArray[Algos.ROUND_ROBIN.value,:], armToChoose, numOfArms, rewardProbabilities, gainedReward[Algos.ROUND_ROBIN.value], avgReward[Algos.ROUND_ROBIN.value,:], numSelections[Algos.ROUND_ROBIN.value,:], i)
     avgRewardArray[Algos.ROUND_ROBIN.value,i] = gainedReward[Algos.ROUND_ROBIN.value] / i
+    
     # Round Robin Delayed 5
     gainedRewardArray[Algos.ROUND_ROBIN_DELAYED_5.value,:], gainedReward[Algos.ROUND_ROBIN_DELAYED_5.value], avgReward[Algos.ROUND_ROBIN_DELAYED_5.value,:], numSelections[Algos.ROUND_ROBIN_DELAYED_5.value,:], delays[Algos.ROUND_ROBIN_DELAYED_5.value,:] = roundRobin_delayed(gainedRewardArray[Algos.ROUND_ROBIN_DELAYED_5.value,:], armToChoose, numOfArms, rewardProbabilities, gainedReward[Algos.ROUND_ROBIN_DELAYED_5.value], avgReward[Algos.ROUND_ROBIN_DELAYED_5.value,:], numSelections[Algos.ROUND_ROBIN_DELAYED_5.value,:], i, delays[Algos.ROUND_ROBIN_DELAYED_5.value,:], 10)
     avgRewardArray[Algos.ROUND_ROBIN_DELAYED_5.value,i] = gainedReward[Algos.ROUND_ROBIN_DELAYED_5.value] / i
+    # Round Robin Delayed 10
+    gainedRewardArray[Algos.ROUND_ROBIN_DELAYED_10.value,:], gainedReward[Algos.ROUND_ROBIN_DELAYED_10.value], avgReward[Algos.ROUND_ROBIN_DELAYED_10.value,:], numSelections[Algos.ROUND_ROBIN_DELAYED_10.value,:], delays[Algos.ROUND_ROBIN_DELAYED_10.value,:] = roundRobin_delayed(gainedRewardArray[Algos.ROUND_ROBIN_DELAYED_10.value,:], armToChoose, numOfArms, rewardProbabilities, gainedReward[Algos.ROUND_ROBIN_DELAYED_10.value], avgReward[Algos.ROUND_ROBIN_DELAYED_10.value,:], numSelections[Algos.ROUND_ROBIN_DELAYED_10.value,:], i, delays[Algos.ROUND_ROBIN_DELAYED_10.value,:], 10)
+    avgRewardArray[Algos.ROUND_ROBIN_DELAYED_10.value,i] = gainedReward[Algos.ROUND_ROBIN_DELAYED_10.value] / i
+    # Round Robin Delayed 20
+    gainedRewardArray[Algos.ROUND_ROBIN_DELAYED_20.value,:], gainedReward[Algos.ROUND_ROBIN_DELAYED_20.value], avgReward[Algos.ROUND_ROBIN_DELAYED_20.value,:], numSelections[Algos.ROUND_ROBIN_DELAYED_20.value,:], delays[Algos.ROUND_ROBIN_DELAYED_20.value,:] = roundRobin_delayed(gainedRewardArray[Algos.ROUND_ROBIN_DELAYED_20.value,:], armToChoose, numOfArms, rewardProbabilities, gainedReward[Algos.ROUND_ROBIN_DELAYED_20.value], avgReward[Algos.ROUND_ROBIN_DELAYED_20.value,:], numSelections[Algos.ROUND_ROBIN_DELAYED_20.value,:], i, delays[Algos.ROUND_ROBIN_DELAYED_20.value,:], 20)
+    avgRewardArray[Algos.ROUND_ROBIN_DELAYED_20.value,i] = gainedReward[Algos.ROUND_ROBIN_DELAYED_20.value] / i
 
     idxs = np.argwhere(delays > 0)
     for idx in idxs:
         delays[tuple(idx)] = delays[tuple(idx)] - 1
 
 
+
+# mean reward per round vs each case with delay
+
+labels = ["PURE UCB", "REWARD QUEUE UCB", "PURE TS", "REWARD QUEUE TS", "OPTIMAL", "ROUND ROBIN"]
+
+pure_ucb = np.array([np.mean(gainedRewardArray[0,:]), np.mean(gainedRewardArray[4,:]), np.mean(gainedRewardArray[5,:]), np.mean(gainedRewardArray[6,:])])
+reward_queue_ucb = np.array([np.mean(gainedRewardArray[1,:]), np.mean(gainedRewardArray[2,:]), np.mean(gainedRewardArray[3,:])])
+pure_ts = np.array([np.mean(gainedRewardArray[7,:]), np.mean(gainedRewardArray[11,:]), np.mean(gainedRewardArray[12,:]), np.mean(gainedRewardArray[13,:])])
+reward_queue_ts = np.array([np.mean(gainedRewardArray[8,:]), np.mean(gainedRewardArray[9,:]), np.mean(gainedRewardArray[10,:])])
+optimal_case = np.array([np.mean(gainedRewardArray[14,:])])
+round_robin = np.array([np.mean(gainedRewardArray[15,:]), np.mean(gainedRewardArray[16,:]), np.mean(gainedRewardArray[17,:]), np.mean(gainedRewardArray[18,:])])
+
+pure_ucb_std = np.array([np.std(gainedRewardArray[0,:]), np.std(gainedRewardArray[4,:]), np.std(gainedRewardArray[5,:]), np.std(gainedRewardArray[6,:])])
+reward_queue_ucb_std = np.array([np.std(gainedRewardArray[1,:]), np.std(gainedRewardArray[2,:]), np.std(gainedRewardArray[3,:])])
+pure_ts_std = np.array([np.std(gainedRewardArray[7,:]), np.std(gainedRewardArray[11,:]), np.std(gainedRewardArray[12,:]), np.std(gainedRewardArray[13,:])])
+reward_queue_ts_std = np.array([np.std(gainedRewardArray[8,:]), np.std(gainedRewardArray[9,:]), np.std(gainedRewardArray[10,:])])
+optimal_case_std = np.array([np.std(gainedRewardArray[14,:])])
+round_robin_std = np.array([np.std(gainedRewardArray[15,:]), np.std(gainedRewardArray[16,:]), np.std(gainedRewardArray[17,:]), np.std(gainedRewardArray[18,:])])
+
+x = np.array([0, 5, 10 ,20])
+
+"""
+# line graph
+ax = plt.subplot()
+plt.plot(x, pure_ucb, marker='^')
+plt.plot(x[1:], reward_queue_ucb, marker='*')
+plt.plot(x, pure_ts, marker='+')
+plt.plot(x[1:], reward_queue_ts, marker='v')
+plt.plot(x[0], optimal_case, marker='d')
+plt.plot(x, round_robin, marker='o')
+
+plt.legend(labels, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.axhline(y = np.mean(gainedRewardArray[Algos.OPTIMAL.value,:]), color = 'r', linestyle = '--')
+plt.grid()
+plt.setp(ax.get_xticklabels(), rotation=30, ha='right')
+plt.xlabel("Delay")
+plt.ylabel("Mean reward per round with std")
+plt.title("Mean reward per round with std vs delay [N = 100, K = 3]")
+plt.tight_layout()
+plt.show()
+"""
+
+
+
+# error bar with std
+ax = plt.subplot()
+plt.errorbar(x, pure_ucb, pure_ucb_std, marker='^', capsize=3)
+plt.errorbar(x[1:], reward_queue_ucb, reward_queue_ucb_std, marker='*', capsize=3)
+plt.errorbar(x, pure_ts, pure_ts_std, marker='+', capsize=3)
+plt.errorbar(x[1:], reward_queue_ts, reward_queue_ts_std, marker='v', capsize=3)
+plt.errorbar(x[0], optimal_case, optimal_case_std, marker='d', capsize=3)
+plt.errorbar(x, round_robin, round_robin_std, marker='o', capsize=3)
+
+plt.legend(labels, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.axhline(y = np.mean(gainedRewardArray[Algos.OPTIMAL.value,:]), color = 'r', linestyle = '--')
+plt.grid()
+plt.setp(ax.get_xticklabels(), rotation=30, ha='right')
+plt.xlabel("Delay")
+plt.ylabel("Mean reward per round with std")
+plt.title("Mean reward per round with std vs delay [N = 100, K = 3]")
+plt.tight_layout()
+plt.show()
+
+
+"""
 # mean reward per round vs delay
 labels = ["PURE UCB without delay", "UCB with reward queue delay = 5", "UCB with reward queue delay = 10", "UCB with reward queue delay = 20", "UCB with reward queue delay = 50", "PURE TS without delay", "TS with reward queue d = 5", "TS with reward queue d = 10", "Optimal", "Round Robin without delay", "Delayed Round Robin, d = 5", "PURE Delayed UCB delay = 5"]
 legends = [labels[0], labels[5], labels[8], labels[9], labels[1], labels[6], labels[10], labels[2], labels[7], labels[11], labels[3], labels[4]]
@@ -303,7 +456,7 @@ plt.ylabel("Mean reward per round with std")
 plt.title("Mean reward per round with std vs delay [N = 100, K = 3]")
 plt.tight_layout()
 plt.show()
-
+"""
 
 """
 # mean reward per round vs cases
